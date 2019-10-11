@@ -1,14 +1,16 @@
 #!/usr/bin/env sh
 
-#local dev environment to test consul
+# Creates a cluster of K3S
 
 MASTER=${1-MASTER}
 WORKER1=${2-WORKER1}
-WORKER2=${2-WORKER2}
+WORKER2=${3-WORKER2}
+# mem defaults 
+MEM=${4-1GB}
 
-multipass launch --name $MASTER;
-multipass launch --name $WORKER1;
-multipass launch --name $WORKER2;
+multipass launch --name $MASTER  --mem=${MEM};
+multipass launch --name $WORKER1 --mem=${MEM};
+multipass launch --name $WORKER2 --mem=${MEM};
 
 multipass exec $MASTER -- /bin/bash -c "curl -sfL https://get.k3s.io | sh -";
 K3S_NODEIP_MASTER="https://$(multipass info $MASTER | grep "IPv4" | awk -F' ' '{print $2}'):6443";
