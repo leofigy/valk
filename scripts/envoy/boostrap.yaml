@@ -1,0 +1,25 @@
+admin:
+  access_log_path: /tmp/admin_access.log
+  address:
+    socket_address:
+      address: 0.0.0.0
+      port_value: 9901
+
+node:
+  id: some-envoy-node
+  cluster: some-envoy-cluster
+
+dynamic_resources:
+  lds_config:
+    path: /cfg/lds-current.yaml
+
+static_resources:
+  clusters:
+  - name: example_cluster
+    connect_timeout: 0.25s
+    type: STATIC
+    lb_policy: ROUND_ROBIN
+    hosts:
+    - socket_address:
+        address: 93.184.216.3    # IP address of example.com
+        port_value: 80
