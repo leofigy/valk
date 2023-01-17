@@ -4,6 +4,10 @@ use glib::clone;
 use std::rc::Rc;
 use std::cell::Cell;
 
+mod my_button;
+
+use my_button::CustomButton;
+
 const APP_ID: &str =  "xyz.leofigy.helper";
 
 fn main() {
@@ -32,6 +36,17 @@ fn build_ui(app: &Application){
         .margin_end(12)
         .build();
 
+        let button = CustomButton::with_label("Press me!");
+        button.set_margin_top(12);
+        button.set_margin_bottom(12);
+        button.set_margin_start(12);
+        button.set_margin_end(12);
+    
+        // Connect to "clicked" signal of `button`
+        button.connect_clicked(move |button| {
+            // Set the label to "Hello World!" after the button has been clicked on
+            button.set_label("Hello World!");
+        });
     
     let number = Rc::new(Cell::new(0));
 
@@ -52,6 +67,7 @@ fn build_ui(app: &Application){
 
     boxed.append(&button_increase);
     boxed.append(&button_decrease);
+    boxed.append(&button);
 
     let window = ApplicationWindow::builder()
     .application(app)
