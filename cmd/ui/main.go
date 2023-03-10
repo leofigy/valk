@@ -1,77 +1,86 @@
 package main
 
 import (
-	"fmt"
-	"image/color"
+	"log"
 	"time"
-
-	"math/rand"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
-	"fyne.io/fyne/v2/canvas"
 	"fyne.io/fyne/v2/container"
+	"fyne.io/fyne/v2/driver/desktop"
 	"fyne.io/fyne/v2/widget"
+
+	"github.com/leofigy/valk/server"
 )
 
 func main() {
 	a := app.New()
-	w := a.NewWindow("Clock")
+	w := a.NewWindow("Valk")
 
-	hello := widget.NewLabel("")
-	w.SetContent(container.NewVBox(
-		hello,
-		widget.NewButton("Hi!", func() {
-			hello.SetText("Pal :)")
-		}),
-	))
+	if desk, ok := a.(desktop.App); ok {
+		m := fyne.NewMenu("Valk",
+			fyne.NewMenuItem("Show", func() {
+				w.Show()
+			}))
+		desk.SetSystemTrayMenu(m)
+	}
 
-	w.Show()
+	//addLabel := widget.NewLabel("Listen address")
+	addValue := widget.NewEntry()
+	addValue.SetPlaceHolder("enter a listener address in format 0.0.0.0:5000")
+	addValue.Resize(fyne.NewSize(100, 100))
+	//label2 := widget.NewLabel("Server Name")
+	serverName := widget.NewEntry()
+	serverName.SetPlaceHolder("Enter a friendly name for the server")
 
-	go func() {
-		for range time.Tick(time.Second) {
-			updateTime(hello)
+	// wires definition
+	state := make(chan server.State)
+	address := make(chan string)
+
+	addValue.OnChanged = func(val string) {
+		address <- val
+	}
+
+	go func(<-chan server.State, <-chan string) {
+		for {
+			select {
+			case t := <-state:
+				log.Println("clicked a transition", t)
+			case p := <-address:
+				log.Println("new address value: ", p)
+			case <-time.After(time.Second * 5):
+				log.Println("no activity pal")
+			}
 		}
-	}()
+	}(state, address)
 
-	// second window
-	w2 := a.NewWindow("Larger")
-	w2.SetContent(widget.NewButton("generate color", func() {
-		w3 := a.NewWindow("random color")
-		w3.Resize(fyne.NewSize(100, 100))
-		myCanvas := w3.Canvas()
-		blue := color.NRGBA{R: 0, G: 0, B: 180, A: 255}
-		rect := canvas.NewRectangle(blue)
-		myCanvas.SetContent(rect)
-		w3.Show()
-		go func() {
-			time.Sleep(time.Second * 5)
-			rect.FillColor = randomColor()
-			rect.Refresh()
-		}()
+	stopBotton := widget.NewButton("stop", func() {
+		state <- server.Stop
+	})
 
-	}))
-	w2.Resize(fyne.NewSize(100, 100))
-	w2.Show()
+	stopBotton.Importance = widget.DangerImportance
 
-	a.Run()
+	// container
+	form := &widget.Form{
+		Items: []*widget.FormItem{ // we can specify items in the constructor
+			{Text: "address value", Widget: addValue},
+			{Text: "server friendly name", Widget: serverName},
+		},
+		OnSubmit: func() { // optional, handle form submission
+			log.Println("Form submitted:", addValue.Text)
+			address <- addValue.Text
+			state <- server.Start
+		},
+		SubmitText: "Start",
+	}
 
-	tidyUp()
-}
-
-func tidyUp() {
-	fmt.Println("Exited")
-}
-
-func updateTime(clock *widget.Label) {
-	formatted := time.Now().Format("Time: 03:04:05")
-	clock.SetText(formatted)
-}
-
-func randomColor() color.NRGBA {
-	rand.Seed(time.Now().UnixNano())
-	r := uint8(rand.Intn(255))
-	g := uint8(rand.Intn(255))
-	b := uint8(rand.Intn(255))
-	return color.NRGBA{R: r, G: g, B: b, A: 255}
+	controls := container.NewHSplit(form, stopBotton)
+	controls.SetOffset(1.0)
+	w.SetContent(controls)
+	w.SetCloseIntercept(func() {
+		w.Hide()
+	})
+	//w.Resize(fyne.NewSize(350, 120))
+	w.Resize(fyne.NewSize(700, 100))
+	w.ShowAndRun()
 }
