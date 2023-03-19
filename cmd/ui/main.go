@@ -1,7 +1,10 @@
 package main
 
 import (
+	"crypto/tls"
 	"log"
+	"os"
+	"path"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
@@ -12,7 +15,34 @@ import (
 	"github.com/leofigy/valk/server"
 )
 
+const (
+	VALK_CERTS = "VALK_CERTS"
+)
+
+var (
+	certsFolder = "./certs"
+	serverCert  = "server.crt"
+	serverKey   = "server.key"
+)
+
+func init() {
+	if os.Getenv(VALK_CERTS) != "" {
+		certsFolder = os.Getenv(VALK_CERTS)
+	}
+
+	serverCert = path.Join(certsFolder, serverCert)
+	serverKey = path.Join(certsFolder, serverKey)
+}
+
 func main() {
+	var security *tls.Config
+
+	if cer, err := tls.LoadX509KeyPair(serverCert, serverKey); err == nil {
+		security = &tls.Config{Certificates: []tls.Certificate{cer}}
+	} else {
+		log.Println("WARNING: Loading ", err)
+	}
+
 	a := app.New()
 	w := a.NewWindow("Valk")
 
@@ -26,11 +56,11 @@ func main() {
 
 	//addLabel := widget.NewLabel("Listen address")
 	addValue := widget.NewEntry()
-	addValue.SetPlaceHolder("enter a listener address in format 0.0.0.0:5000")
 	addValue.Resize(fyne.NewSize(100, 100))
+	addValue.SetText("0.0.0.0:4001")
 	//label2 := widget.NewLabel("Server Name")
 	serverName := widget.NewEntry()
-	serverName.SetPlaceHolder("Enter a friendly name for the server")
+	serverName.SetText("ValkServer")
 
 	// wires definition
 	state := make(chan server.ServerConfig)
@@ -55,8 +85,9 @@ func main() {
 		OnSubmit: func() { // optional, handle form submission
 			log.Println("Form submitted:", addValue.Text)
 			state <- server.ServerConfig{
-				Current: server.Start,
-				Address: addValue.Text,
+				Current:  server.Start,
+				Address:  addValue.Text,
+				Security: security,
 			}
 		},
 		SubmitText: "Start",

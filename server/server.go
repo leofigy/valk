@@ -1,6 +1,7 @@
 package server
 
 import (
+	"crypto/tls"
 	"log"
 	"net"
 	"sync"
@@ -15,8 +16,9 @@ const (
 )
 
 type ServerConfig struct {
-	Current State
-	Address string
+	Current  State
+	Address  string
+	Security *tls.Config
 }
 
 type Server struct {
@@ -33,7 +35,13 @@ func NewServer(cfg ServerConfig) (*Server, error) {
 	}
 
 	log.Println("trying to listing in ", cfg.Address)
-	l, err := net.Listen("tcp", cfg.Address)
+	var l net.Listener
+	var err error
+	if cfg.Security != nil {
+		l, err = tls.Listen("tcp", cfg.Address, cfg.Security)
+	} else {
+		l, err = net.Listen("tcp", cfg.Address)
+	}
 
 	if err != nil {
 		return nil, err
