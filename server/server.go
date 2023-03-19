@@ -13,9 +13,13 @@ const (
 	Start
 )
 
-type Server struct {
+type ServerConfig struct {
 	Current State
-	Port    int
+	Address string
+}
+
+type Server struct {
+	ServerConfig
 }
 
 func (server *Server) HandleWR(conn net.Conn) {
@@ -33,9 +37,27 @@ func (server *Server) HandleWR(conn net.Conn) {
 	log.Println(string(buf[0:readN]))
 }
 
-func InitBackendListener(state chan State, addr chan string) {
+func InitBackendListener(state chan ServerConfig) {
+	var server Server
+
 	for {
-		time.Sleep(time.Second * 2)
-		log.Println("listener loop")
+		select {
+		case newState := <-state:
+			log.Println(newState)
+			if server.ServerConfig.Current != newState.Current {
+				log.Println("want to do a transition for ", newState.Current)
+				switch newState.Current {
+				case Start:
+					server.ServerConfig = newState
+				case Stop:
+					server.ServerConfig = newState
+				default:
+					log.Println("stuck")
+				}
+
+			}
+		case <-time.After(time.Second * 2):
+			log.Println("listener nothing to do")
+		}
 	}
 }

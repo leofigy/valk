@@ -2,7 +2,6 @@ package main
 
 import (
 	"log"
-	"time"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
@@ -34,30 +33,15 @@ func main() {
 	serverName.SetPlaceHolder("Enter a friendly name for the server")
 
 	// wires definition
-	state := make(chan server.State)
-	address := make(chan string)
+	state := make(chan server.ServerConfig)
 
-	go server.InitBackendListener(state, address)
-
-	addValue.OnChanged = func(val string) {
-		address <- val
-	}
-
-	go func(<-chan server.State, <-chan string) {
-		for {
-			select {
-			case t := <-state:
-				log.Println("clicked a transition", t)
-			case p := <-address:
-				log.Println("new address value: ", p)
-			case <-time.After(time.Second * 5):
-				log.Println("no activity pal")
-			}
-		}
-	}(state, address)
+	go server.InitBackendListener(state)
 
 	stopBotton := widget.NewButton("stop", func() {
-		state <- server.Stop
+		state <- server.ServerConfig{
+			Current: server.Stop,
+			Address: "",
+		}
 	})
 
 	stopBotton.Importance = widget.DangerImportance
@@ -70,8 +54,10 @@ func main() {
 		},
 		OnSubmit: func() { // optional, handle form submission
 			log.Println("Form submitted:", addValue.Text)
-			address <- addValue.Text
-			state <- server.Start
+			state <- server.ServerConfig{
+				Current: server.Start,
+				Address: addValue.Text,
+			}
 		},
 		SubmitText: "Start",
 	}
