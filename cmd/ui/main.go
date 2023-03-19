@@ -37,6 +37,8 @@ func main() {
 	state := make(chan server.State)
 	address := make(chan string)
 
+	go server.InitBackendListener(state, address)
+
 	addValue.OnChanged = func(val string) {
 		address <- val
 	}
