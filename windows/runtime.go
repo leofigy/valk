@@ -4,7 +4,6 @@ import (
 	"errors"
 	"log"
 	"os"
-	"os/signal"
 	"syscall"
 	"time"
 	"unsafe"
@@ -130,6 +129,7 @@ func (u *User32) ToRune(key types.KeyboardEvent) rune {
 func (u *User32) Sniff(
 	key chan<- rune,
 	window chan<- string,
+	signaler <-chan os.Signal,
 ) error {
 
 	keyboardChan := make(
@@ -141,9 +141,6 @@ func (u *User32) Sniff(
 	}
 
 	defer keyboard.Uninstall()
-
-	signaler := make(chan os.Signal, 1)
-	signal.Notify(signaler, os.Interrupt)
 
 	log.Println("<<<<<<<<<< start to sniffing keyboard")
 
@@ -164,7 +161,7 @@ func (u *User32) Sniff(
 					}
 				}
 			} else {
-				log.Println(err)
+				log.Println("error ...... current window", err)
 			}
 		case <-time.After(time.Second * 5):
 			log.Println("nothing on the keyboard")
