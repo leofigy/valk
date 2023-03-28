@@ -2,7 +2,11 @@ module github.com/leofigy/valk
 
 go 1.19
 
-require fyne.io/fyne/v2 v2.3.1
+require (
+	fyne.io/fyne/v2 v2.3.1
+	github.com/moutend/go-hook v0.1.0
+	golang.org/x/sys v0.5.0
+)
 
 require (
 	fyne.io/systray v1.10.1-0.20230207085535-4a244dbb9d03 // indirect
@@ -29,7 +33,6 @@ require (
 	golang.org/x/image v0.5.0 // indirect
 	golang.org/x/mobile v0.0.0-20211207041440-4e6c2922fdee // indirect
 	golang.org/x/net v0.7.0 // indirect
-	golang.org/x/sys v0.5.0 // indirect
 	golang.org/x/text v0.7.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	honnef.co/go/js/dom v0.0.0-20210725211120-f030747120f2 // indirect

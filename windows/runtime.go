@@ -5,6 +5,7 @@ import (
 	"syscall"
 	"unsafe"
 
+	"github.com/moutend/go-hook/pkg/types"
 	win "golang.org/x/sys/windows"
 )
 
@@ -77,4 +78,14 @@ func (u *User32) GetWinText(handler uintptr) (string, error) {
 	)
 
 	return syscall.UTF16ToString(buf), nil
+}
+
+func (u *User32) GetActiveWindow() (uintptr, error) {
+	win, _, err := u.procs["GetForegroundWindow"].Call()
+	return win, err
+}
+
+func ToRune(key types.KeyboardEvent) rune {
+
+	return rune(0)
 }
